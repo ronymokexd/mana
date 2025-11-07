@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú</title>
+    <link rel="icon" href="../img/mana.png" type="image/png">
+    <link rel="stylesheet" href="../css/bootstrap.css">
+</head>
+
+<body class="bg-dark">
+    <div class="container w-75 mt-5 rounded-4 shadow-lg p-0 overflow-hidden bg-color-of-body">
+
+        <!-- Barra superior -->
+        <div class="d-flex justify-content-between align-items-center p-3 bg-color-of-body">
+            <a href="pedidos-cl.html">
+                <button type="button" class="btn btn-light">Volver</button>
+            </a>
+
+            <!-- Icono del carrito -->
+            <a href="carrito.html" class="text-white position-relative d-flex align-items-center text-decoration-none">
+                <img src="../img/carrito.png" alt="Carrito" width="40" height="40" class="me-2">
+                <span class="fw-bold text-white">Carrito</span>
+                <span id="cart-count"
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+            </a>
+        </div>
+
+        <!-- Contenido principal -->
+        <div class="d-flex flex-column justify-content-center align-items-center p-5" style="min-height: 400px;">
+            <img src="../img/mana.png" alt="logo" style="width: 200px; height: auto; margin-bottom: 20px;">
+            <h1 class="py-2 text-center text-white">Este es nuestro menú</h1>
+
+            <!-- Botones del menú -->
+            <div class="row justify-content-center text-center w-100">
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <a href="salchipapas-pd.html">
+                        <button type="button"
+                            class="btn btn-fondo-slc text-gray fw-bold fs-4 w-100">Salchipapas</button>
+                    </a>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <a href="perros-pd.html">
+                        <button type="button" class="btn btn-fondo-prr text-gray fw-bold fs-4 w-100">Perros
+                            Calientes</button>
+                    </a>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <a href="hamburguesas-pd.html">
+                        <button type="button"
+                            class="btn btn-fondo-hmb text-gray fw-bold fs-4 w-100">Hamburguesas</button>
+                    </a>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <a href="patacones-pd.html">
+                        <button type="button" class="btn btn-fondo-ptn text-gray fw-bold fs-4 w-100">Patacones</button>
+                    </a>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <a href="picada-pd.html">
+                        <button type="button" class="btn btn-fondo-pcd text-gray fw-bold fs-4 w-100">Picadas</button>
+                    </a>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <a href="adicionales-pd.html">
+                        <button type="button" class="btn btn-fondo-dc text-gray fw-bold fs-4 w-100">Adicionales</button>
+                    </a>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <a href="promosiones-pd.html">
+                        <button type="button"
+                            class="btn btn-fondo-prm text-gray fw-bold fs-4 w-100">Promociones</button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Contador del carrito (usa el mismo localStorage del carrito.js)
+        document.addEventListener("DOMContentLoaded", () => {
+            const cartCount = document.getElementById("cart-count");
+            const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+            const total = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+            cartCount.textContent = total;
+        });
+    </script>
+</body>
+
+</html>

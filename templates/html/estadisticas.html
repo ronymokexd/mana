@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas - Mana</title>
+    <link rel="stylesheet" href="../css/bootstrap.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #121212;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .container {
+            width: 90%;
+            margin: 50px auto;
+        }
+
+        .estadistica-card {
+            background-color: #1e1e1e;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .estadistica-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: 250px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="text-end mb-4">
+            <a href="./bienvenido.html" class="btn btn-secondary">Volver</a>
+        </div>
+
+        <div class="text-center mb-4">
+            <img src="../img/mana.png" alt="logo" style="width: 200px; height: auto;">
+            <h3 class="mt-3">Estadísticas del Día</h3>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="estadistica-card col-md-5 me-3">
+                <h3>Productos por Categoría</h3>
+                <canvas id="productosCategoriaChart"></canvas>
+            </div>
+            <div class="estadistica-card col-md-5 ms-3">
+                <h3>Producto Más Vendido</h3>
+                <canvas id="productoMasVendidoChart"></canvas>
+            </div>
+        </div>
+
+        <div class="row justify-content-center mt-4">
+            <div class="estadistica-card col-md-5">
+                <h3>Método de Pago Más Usado</h3>
+                <canvas id="metodoPagoChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/estadisticas_graficos.js"></script>
+</body>
+
+</html>

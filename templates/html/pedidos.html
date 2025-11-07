@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos</title>
+    <link rel="icon" href="../img/mana.png" type="image/png">
+    <link rel="stylesheet" href="../css/bootstrap.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .tabla-container {
+            width: 95%;
+            margin: 40px auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            background-color: #1e1e1e;
+        }
+
+        table {
+            width: 100%;
+            font-size: 1.05rem;
+        }
+
+        thead {
+            background-color: #343a40;
+            color: #f8f9fa;
+            font-size: 1.1rem;
+        }
+
+        tbody tr:hover {
+            background-color: #2a2a2a;
+            transition: 0.3s;
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        h4 {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            font-size: 1rem;
+            padding: 8px 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="text-end p-3">
+        <a href="./bienvenido.html" class="btn btn-secondary me-2">Volver</a>
+        <a href="../index.html" class="btn btn-secondary">Cerrar sesión</a>
+    </div>
+
+    <div class="text-center mt-4">
+        <img src="../img/mana.png" alt="logo" style="width: 220px; height: auto; margin-bottom: 15px;">
+        <h4>Listado de Pedidos</h4>
+    </div>
+
+    <div class="tabla-container">
+        <table class="table table-dark table-striped table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>ID Pedido</th>
+                    <th>Cliente</th>
+                    <th>Número</th>
+                    <th>Dirección</th>
+                    <th>Barrio</th>
+                    <th>Producto(s)</th>
+                    <th>Cantidad</th>
+                    <th>Total</th>
+                    <th>Método de Pago</th>
+                    <th>¿Necesita Cambio?</th>
+                    <th>Descripción</th>
+                    <th>Fecha</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="tablaPedidos">
+                <tr>
+                    <td colspan="13">Cargando pedidos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="../js/pedidos.js"></script>
+</body>
+
+</html>

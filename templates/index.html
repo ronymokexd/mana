@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio Maná </title>
+    <link rel="icon" href="./img/mana.png" type="image/png">
+    <link rel="stylesheet" href="./css/bootstrap.css">
+</head>
+
+<body class="bg-dark">
+    <div class="container w-75 mt-5 rounded-4 shadow-lg p-0 overflow-hidden">
+        <div class="row g-0">
+
+            <div class="col-lg-6 d-none d-lg-block">
+                <img src="./img/mana.png" class="img-fluid w-100 h-100 object-fit-cover" alt="fondo">
+            </div>
+
+            <div class="col-lg-6 bg-color-of-form p-5">
+                <div class="text-end">
+                    <img src="img/mana.png" width="60" alt="">
+                </div>
+                <h2 class="fw-bold text-center py-5 text-dark">Bienvenido</h2>
+                <p class="text-dark">(para parrafo)</p>
+
+                <form id="loginForm" action="#">
+                    <div class="mb-4">
+                        <label for="username" class="form-label text-dark">Usuario</label>
+                        <input type="text" class="form-control rounded-pill border-dark" id="username"
+                            placeholder="Ingrese su usuario" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label text-dark">Contraseña</label>
+                        <input type="password" class="form-control rounded-pill border-dark" id="password"
+                            placeholder="Ingrese su contraseña" required>
+                    </div>
+
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input border-secondary" id="showPassword">
+                        <label for="showPassword" class="form-check-label text-dark">Mostrar contraseña</label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-sign rounded-pill text-white">Iniciar Sesión</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="./js/login.js"></script>
+</body>
+
+</html>

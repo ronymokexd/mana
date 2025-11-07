@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido Confirmado </title>
+    <link rel="icon" href="../img/mana.png" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-dark text-white d-flex justify-content-center align-items-center vh-100">
+
+    <div class="container text-center bg-secondary bg-opacity-25 rounded-4 p-5 shadow-lg" style="max-width: 600px;">
+        <img src="../img/mana.png" alt="logo" class="mb-4" style="width: 200px;">
+        <h3 class="fw-bold mb-3">¡Tu pedido está en nuestras manos! 🥳</h3>
+        <h4 id="numero-pedido" class="mb-4"></h4>
+        <p>Para completar tu pedido, comunícate al WhatsApp para realizar el pago por Nequi:</p>
+        <a href="https://wa.me/573001234567" target="_blank" class="btn btn-info btn-lg text-white mb-3">
+            <i class="bi bi-whatsapp"></i> Contactar por WhatsApp
+        </a>
+        <p>¡Gracias por preferirnos 💚!</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.js"></script>
+    <script>
+        const pedidoNumero = localStorage.getItem("pedidoNumero") || "N/A";
+        document.getElementById("numero-pedido").textContent = `Pedido Nº ${pedidoNumero}`;
+        
+    </script>
+</body>
+
+</html>
