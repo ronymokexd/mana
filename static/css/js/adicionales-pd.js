@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const cargarproductos = async () => {
         try {
-            const response = await fetch("http://127.0.0.1:8000/menu/adicionales");
+        const response = await fetch("https://mana-51g3.onrender.com/menu/adicionales");
+
             if (!response.ok) throw new Error(`Error ${response.status}`);
 
             const productos = await response.json();
@@ -21,8 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.innerHTML = `
                     <div class="card h-100 bg-dark text-white border-0 shadow">
                         <img src="${prod.imagen || 'https://via.placeholder.com/300x180'}" 
-                             class="card-img-top" 
-                             alt="${prod.nombre}">
+                            class="card-img-top" 
+                            alt="${prod.nombre}">
                         <div class="card-body text-center">
                             <h5 class="card-title text-carts">${prod.nombre}</h5>
                             <p class="card-text">${prod.descripcion || ''}</p>

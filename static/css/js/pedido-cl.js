@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/clientes', {
+            const response = await fetch('https://mana-51g3.onrender.com/clientes', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", cargarPedidos);
 
 async function cargarPedidos() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/pedidos_enviados");
+    const res = await fetch("https://mana-51g3.onrender.com/pedidos_enviados");
     if (!res.ok) throw new Error("Error al obtener los pedidos");
     const pedidos = await res.json();
 

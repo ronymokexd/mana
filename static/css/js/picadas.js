@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const cargarproductos = async () => {
         try {
-            const response = await fetch("http://127.0.0.1:8000/menu/picadas");
+            const response = await fetch("https://mana-51g3.onrender.com/menu/picadas");
             if (!response.ok) throw new Error(`Error ${response.status}`);
 
             const productos = await response.json();

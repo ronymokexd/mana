@@ -1,6 +1,6 @@
 async function cargarPedidos() {
   try {
-    const response = await fetch("http://127.0.0.1:8000/pedidos_enviados");
+    const response = await fetch("https://mana-51g3.onrender.com/pedidos_enviados");
     if (!response.ok) throw new Error("Error al obtener los pedidos");
     const pedidos = await response.json();
 

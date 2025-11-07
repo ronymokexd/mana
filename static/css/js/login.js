@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchUsers = async () => {
         try {
             console.log('Cargando usuarios...');
-            const response = await fetch('http://127.0.0.1:8000/usuarios'); 
+            const response = await fetch('https://mana-51g3.onrender.com/usuarios'); 
 
             if (!response.ok) {
                 throw new Error(`Error en la respuesta del servidor: ${response.status}`);

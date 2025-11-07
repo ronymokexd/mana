@@ -1,6 +1,6 @@
 async function cargarEstadisticasGraficos() {
     try {
-        const response = await fetch("http://127.0.0.1:8000/estadisticas_dia");
+        const response = await fetch("https://mana-51g3.onrender.com/estadisticas_dia");
         if (!response.ok) throw new Error("Error al obtener estadísticas");
         const stats = await response.json();
 
