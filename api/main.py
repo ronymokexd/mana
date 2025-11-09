@@ -126,12 +126,18 @@ def crear_cliente(datos: Cliente):
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
+        # Consulta modificada para usar RETURNING id (obligatorio en PostgreSQL)
         cursor.execute(
-            "INSERT INTO clientes (nombre, numero, direccion, barrio) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO clientes (nombre, numero, direccion, barrio) VALUES (%s, %s, %s, %s) RETURNING id",
             (datos.nombre, datos.numero, datos.direccion, datos.barrio)
         )
+        # Obtenemos el ID de la fila devuelta
+        nuevo_id = cursor.fetchone()['id']
         conexion.commit()
-        return {"mensaje": "Cliente registrado exitosamente", "id": cursor.lastrowid}
+        
+        # Devolvemos el ID al cliente (frontend)
+        return {"mensaje": "Cliente registrado exitosamente", "id": nuevo_id}
+        
     except Exception as e:
         conexion.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -141,6 +147,7 @@ def crear_cliente(datos: Cliente):
 
 @app.get("/clientes")
 def obtener_clientes():
+    # ... (Esta función se mantiene igual, ya que solo lista)
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
@@ -152,7 +159,6 @@ def obtener_clientes():
     finally:
         cursor.close()
         conexion.close()
-
 # -------------------- PEDIDOS --------------------
 class PedidoItem(BaseModel):
     producto_id: int
