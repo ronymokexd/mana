@@ -391,11 +391,11 @@ def estadisticas_dia():
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
-        # Total de pedidos del día
+        # Total de pedidos del día (No genera error)
         cursor.execute("SELECT COUNT(*) AS total_pedidos FROM pedidos_enviados")
         total_pedidos = cursor.fetchone()['total_pedidos']
 
-        # Total por categoría
+        # Total por categoría (No genera error, agrupa solo por cat.nombre)
         cursor.execute("""
             SELECT cat.nombre AS categoria, SUM(p.cantidad) AS total
             FROM pedidos_enviados p
@@ -405,19 +405,20 @@ def estadisticas_dia():
         """)
         productos_por_categoria = cursor.fetchall()
 
-        # Producto más vendido
+        # Producto más vendido (*** CONSULTA CORREGIDA PARA POSTGRESQL ***)
+        # Se agregan pr.nombre y cat.nombre al GROUP BY, además de pr.id
         cursor.execute("""
             SELECT pr.nombre, cat.nombre AS categoria, SUM(p.cantidad) AS cantidad
             FROM pedidos_enviados p
             JOIN productos pr ON p.producto_id = pr.id
             JOIN categorias cat ON pr.categoria_id = cat.id
-            GROUP BY pr.id
+            GROUP BY pr.id, pr.nombre, cat.nombre  # <<-- AJUSTE CLAVE AQUÍ
             ORDER BY cantidad DESC
             LIMIT 1
         """)
         producto_mas_vendido = cursor.fetchone() or {"nombre": "N/A", "categoria": "N/A", "cantidad": 0}
 
-        # Método de pago más usado
+        # Método de pago más usado (No genera error)
         cursor.execute("""
             SELECT metodo_pago, COUNT(*) AS total
             FROM pedidos_enviados
@@ -436,11 +437,11 @@ def estadisticas_dia():
         }
 
     except Exception as e:
+        # Es útil devolver el error real para depuración, pero mantengo el formato original
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
-
 
 
 # -------------------- EJECUCIÓN --------------------
