@@ -1,10 +1,78 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Security, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import psycopg2
 import psycopg2.extras
 import uvicorn
+from datetime import datetime, timedelta
+from typing import Annotated, Optional
 
+# 🛑 IMPORTACIONES PARA SEGURIDAD JWT
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordBearer
+
+# -------------------- CONFIGURACIÓN DE SEGURIDAD --------------------
+# ⚠️ CAMBIA ESTO POR UNA CLAVE SECRETA FUERTE ANTES DE PRODUCCIÓN
+SECRET_KEY = "tu-clave-super-secreta-y-segura" 
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ADMIN_TOKEN_EXPIRE_MINUTES = 60 * 24
+
+# Esquema para indicar dónde obtener el token (Header Authorization: Bearer <token>)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login") 
+
+# -------------------- FUNCIONES DE SEGURIDAD --------------------
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """Genera un Token JWT firmado."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def decode_access_token(token: str):
+    """Decodifica el Token JWT y devuelve el 'sub' (ID) si es válido."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("sub")
+        if user_id is None:
+            return None
+        return user_id # Devuelve el ID
+    except JWTError:
+        return None
+
+def get_current_cliente(token: Annotated[str, Depends(oauth2_scheme)]):
+    """Dependencia para validar el token y obtener los datos del cliente."""
+    client_id = decode_access_token(token)
+    if client_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido o expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Busca el cliente en la BD
+    conexion = conexion_bd()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("SELECT id, nombre, numero, direccion, barrio FROM clientes WHERE id = %s", (client_id,))
+        cliente = cursor.fetchone()
+        if cliente is None:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        # Retornamos un diccionario con los datos del cliente, incluyendo el ID
+        return dict(cliente)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error de base de datos al buscar cliente")
+    finally:
+        cursor.close()
+        conexion.close()
+
+# -------------------- INICIALIZACIÓN DE FASTAPI --------------------
 app = FastAPI()
 
 # -------------------- CORS --------------------
@@ -21,12 +89,15 @@ def conexion_bd():
     return psycopg2.connect(
         host="dpg-d471s46mcj7s73dfaag0-a.oregon-postgres.render.com",
         database="mana_qkne",
-        user="mana_qkne_user",      # cámbialo por tu usuario exacto de Render
-        password="aXd4FQSFS06Tje19YezEAHwcNOprcqk1",  # tu contraseña exacta
+        user="mana_qkne_user",
+        password="aXd4FQSFS06Tje19YezEAHwcNOprcqk1",
         cursor_factory=psycopg2.extras.RealDictCursor
     )
 
-# -------------------- LOGIN --------------------
+# ---------------------------------------------------------------------------------------------------
+# -------------------- ENDPOINTS DE AUTENTICACIÓN Y CLIENTES --------------------
+# ---------------------------------------------------------------------------------------------------
+
 class Login(BaseModel):
     usuario: str
     contraseña: str
@@ -37,23 +108,97 @@ def login_admin(datos: Login):
     cursor = conexion.cursor()
     try:
         cursor.execute(
-            "SELECT * FROM administrador WHERE usuario=%s AND contraseña=%s",
+            "SELECT id, usuario, rol FROM administrador WHERE usuario=%s AND contraseña=%s",
             (datos.usuario, datos.contraseña)
         )
         admin = cursor.fetchone()
         if admin:
-            return {"mensaje": "Inicio de sesión exitoso", "admin": admin}
+            # 🛑 Generar token para Admin
+            access_token_expires = timedelta(minutes=ADMIN_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": str(admin['id']), "rol": "admin"},
+                expires_delta=access_token_expires
+            )
+            return {
+                "mensaje": "Inicio de sesión exitoso",
+                "admin": admin,
+                "access_token": access_token,
+                "token_type": "bearer"
+            }
         else:
-            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contraseña incorrectos")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
 
-# -------------------- USUARIOS --------------------
+# --- CLIENTES ---
+
+class Cliente(BaseModel):
+    nombre: str
+    numero: str
+    direccion: str
+    barrio: str
+
+@app.post("/clientes")
+def crear_cliente(datos: Cliente):
+    conexion = conexion_bd()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO clientes (nombre, numero, direccion, barrio) VALUES (%s, %s, %s, %s) RETURNING id",
+            (datos.nombre, datos.numero, datos.direccion, datos.barrio)
+        )
+        nuevo_id = cursor.fetchone()['id']
+        conexion.commit()
+        
+        # 🛑 Generar token para el Cliente recién creado
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(nuevo_id), "rol": "cliente"},
+            expires_delta=access_token_expires
+        )
+        
+        # Devolver ID y TOKEN
+        return {
+            "mensaje": "Cliente registrado exitosamente", 
+            "id": nuevo_id,
+            "access_token": access_token, 
+            "token_type": "bearer"
+        }
+        
+    except Exception as e:
+        conexion.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    finally:
+        cursor.close()
+        conexion.close()
+
+@app.get("/clientes/me")
+def obtener_cliente_actual(cliente_actual: Annotated[dict, Depends(get_current_cliente)]):
+    """Devuelve los datos del cliente actual usando el Token Bearer (usado por el frontend del carrito)."""
+    return cliente_actual
+
+@app.get("/clientes") # Se mantiene el endpoint original para listar (sin protección de token)
+def obtener_clientes():
+    conexion = conexion_bd()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("SELECT * FROM clientes")
+        clientes = cursor.fetchall()
+        return clientes
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    finally:
+        cursor.close()
+        conexion.close()
+
+# --- USUARIOS (ADMIN) ---
+
 @app.get("/usuarios")
 def obtener_usuarios():
+    # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
@@ -61,12 +206,17 @@ def obtener_usuarios():
         usuarios = cursor.fetchall()
         return usuarios
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
 
-# -------------------- MENÚ --------------------
+# ---------------------------------------------------------------------------------------------------
+# -------------------- ENDPOINTS DE PEDIDOS Y MENÚ --------------------
+# ---------------------------------------------------------------------------------------------------
+
+# --- MENÚ ---
+
 class Producto(BaseModel):
     id: int
     nombre: str
@@ -89,7 +239,7 @@ def obtener_menu():
         productos = cursor.fetchall()
         return productos if productos else {"mensaje": "No hay productos disponibles"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
@@ -109,57 +259,27 @@ def obtener_por_categoria(nombre_categoria: str):
         productos = cursor.fetchall()
         return productos if productos else {"mensaje": f"No hay productos en la categoría '{nombre_categoria}'"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
 
-# -------------------- CLIENTES --------------------
-class Cliente(BaseModel):
-    nombre: str
-    numero: str
-    direccion: str
-    barrio: str
-
-@app.post("/clientes")
-def crear_cliente(datos: Cliente):
+@app.get("/categorias")
+def obtener_categorias():
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
-        # Consulta modificada para usar RETURNING id (obligatorio en PostgreSQL)
-        cursor.execute(
-            "INSERT INTO clientes (nombre, numero, direccion, barrio) VALUES (%s, %s, %s, %s) RETURNING id",
-            (datos.nombre, datos.numero, datos.direccion, datos.barrio)
-        )
-        # Obtenemos el ID de la fila devuelta
-        nuevo_id = cursor.fetchone()['id']
-        conexion.commit()
-        
-        # Devolvemos el ID al cliente (frontend)
-        return {"mensaje": "Cliente registrado exitosamente", "id": nuevo_id}
-        
+        cursor.execute("SELECT * FROM categorias ORDER BY id;")
+        categorias = cursor.fetchall()
+        return categorias
     except Exception as e:
-        conexion.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
+        
+# --- PEDIDOS ---
 
-@app.get("/clientes")
-def obtener_clientes():
-    # ... (Esta función se mantiene igual, ya que solo lista)
-    conexion = conexion_bd()
-    cursor = conexion.cursor()
-    try:
-        cursor.execute("SELECT * FROM clientes")
-        clientes = cursor.fetchall()
-        return clientes
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        conexion.close()
-# -------------------- PEDIDOS --------------------
 class PedidoItem(BaseModel):
     producto_id: int
     nombre_producto: str
@@ -167,16 +287,21 @@ class PedidoItem(BaseModel):
     cantidad: int
 
 class Pedido(BaseModel):
-    cliente_id: int
+    # Ya NO se necesita cliente_id en el body, se obtiene del token.
     items: list[PedidoItem]
     metodo_pago: str
     necesita_cambio: int | None = None
     descripcion: str | None = None
 
 @app.post("/pedidos")
-def crear_pedido(pedido: Pedido):
+def crear_pedido(
+    pedido: Pedido,
+    # 🛑 Obtiene el cliente_id de la validación del Token
+    cliente_actual: Annotated[dict, Depends(get_current_cliente)] 
+):
     conexion = conexion_bd()
     cursor = conexion.cursor()
+    cliente_id = cliente_actual['id'] # ID del cliente seguro y validado
 
     try:
         # Insertar productos del pedido
@@ -186,7 +311,7 @@ def crear_pedido(pedido: Pedido):
                 (cliente_id, producto_id, nombre_producto, precio, cantidad, metodo_pago, necesita_cambio, descripcion)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                pedido.cliente_id,
+                cliente_id, # Usamos el ID seguro del token
                 item.producto_id,
                 item.nombre_producto,
                 item.precio,
@@ -197,13 +322,12 @@ def crear_pedido(pedido: Pedido):
             ))
 
         conexion.commit()
-        numero_pedido = cursor.lastrowid  # Usamos el ID como número de pedido
-
-        return {"mensaje": "Pedido creado exitosamente", "numero_pedido": numero_pedido}
+        # Se asume que la base de datos maneja la numeración
+        return {"mensaje": "Pedido creado exitosamente"}
 
     except Exception as e:
         conexion.rollback()
-        return {"error": str(e)}
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
     finally:
         cursor.close()
@@ -211,6 +335,7 @@ def crear_pedido(pedido: Pedido):
 
 @app.get("/pedidos")
 def obtener_pedidos():
+    # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
@@ -232,29 +357,12 @@ def obtener_pedidos():
         pedidos = cursor.fetchall()
         return pedidos
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
 
-# -------------------- REINICIAR PEDIDOS --------------------
-@app.post("/reiniciar-pedidos")
-def reiniciar_pedidos():
-    conexion = conexion_bd()
-    cursor = conexion.cursor()
-    try:
-        cursor.execute("DELETE FROM pedidos_enviados;")
-        cursor.execute("ALTER TABLE pedidos_enviados AUTO_INCREMENT = 1;")
-        conexion.commit()
-        return {"mensaje": "Pedidos eliminados y contador de ID reiniciado a 1"}
-    except Exception as e:
-        conexion.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        conexion.close()
-
-# -------------------- CARRITO --------------------
+# -------------------- CARRITO (Se mantiene sin protección, ya que el frontend usa localStorage) --------------------
 class CarritoItem(BaseModel):
     producto_id: int
     nombre_producto: str
@@ -263,6 +371,8 @@ class CarritoItem(BaseModel):
 
 @app.post("/carrito")
 def agregar_al_carrito(item: CarritoItem):
+    # Nota: Si quisieras proteger esta ruta y usar una tabla 'carrito' en BD,
+    # necesitarías un campo 'cliente_id' y usar Depends(get_current_cliente)
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
@@ -274,7 +384,7 @@ def agregar_al_carrito(item: CarritoItem):
         return {"mensaje": "Producto agregado al carrito"}
     except Exception as e:
         conexion.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
@@ -288,7 +398,7 @@ def obtener_carrito():
         carrito = cursor.fetchall()
         return carrito
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
@@ -303,7 +413,7 @@ def eliminar_item_carrito(id: int):
         return {"mensaje": "Producto eliminado del carrito"}
     except Exception as e:
         conexion.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
@@ -318,13 +428,35 @@ def vaciar_carrito():
         return {"mensaje": "Carrito vaciado correctamente"}
     except Exception as e:
         conexion.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    finally:
+        cursor.close()
+        conexion.close()
+
+# -------------------- ADMINISTRACIÓN Y ESTADÍSTICAS --------------------
+
+@app.post("/reiniciar-pedidos")
+@app.delete("/reiniciar_pedidos") # Se mantiene el endpoint delete para compatibilidad
+def reiniciar_pedidos():
+    # Nota: Esta ruta debería protegerse con un rol de administrador
+    conexion = conexion_bd()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("DELETE FROM pedidos_enviados;")
+        # En PostgreSQL, para reiniciar la secuencia de una tabla (similar a AUTO_INCREMENT)
+        cursor.execute("SELECT setval(pg_get_serial_sequence('pedidos_enviados', 'id'), 1, false);") 
+        conexion.commit()
+        return {"mensaje": "Pedidos eliminados y contador de ID reiniciado a 1"}
+    except Exception as e:
+        conexion.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
 
 @app.get("/pedidos_enviados")
 def obtener_pedidos_enviados():
+    # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
@@ -352,50 +484,20 @@ def obtener_pedidos_enviados():
         pedidos = cursor.fetchall()
         return pedidos
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        conexion.close()
-@app.delete("/reiniciar_pedidos")
-def reiniciar_pedidos():
-    conexion = conexion_bd()
-    cursor = conexion.cursor()
-    try:
-        cursor.execute("DELETE FROM pedidos_enviados;")
-        cursor.execute("ALTER TABLE pedidos_enviados AUTO_INCREMENT = 1;")
-        conexion.commit()
-        return {"mensaje": "Pedidos eliminados y contador de ID reiniciado a 1"}
-    except Exception as e:
-        conexion.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
 
-@app.get("/categorias")
-def obtener_categorias():
-    conexion = conexion_bd()
-    cursor = conexion.cursor()
-    try:
-        cursor.execute("SELECT * FROM categorias ORDER BY id;")
-        categorias = cursor.fetchall()
-        return categorias
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        conexion.close()
-        
 @app.get("/estadisticas_dia")
 def estadisticas_dia():
+    # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
-        # Total de pedidos del día (No genera error)
         cursor.execute("SELECT COUNT(*) AS total_pedidos FROM pedidos_enviados")
         total_pedidos = cursor.fetchone()['total_pedidos']
 
-        # Total por categoría (No genera error, agrupa solo por cat.nombre)
         cursor.execute("""
             SELECT cat.nombre AS categoria, SUM(p.cantidad) AS total
             FROM pedidos_enviados p
@@ -405,20 +507,17 @@ def estadisticas_dia():
         """)
         productos_por_categoria = cursor.fetchall()
 
-        # Producto más vendido (*** CONSULTA CORREGIDA PARA POSTGRESQL ***)
-        # Se agregan pr.nombre y cat.nombre al GROUP BY, además de pr.id
         cursor.execute("""
             SELECT pr.nombre, cat.nombre AS categoria, SUM(p.cantidad) AS cantidad
             FROM pedidos_enviados p
             JOIN productos pr ON p.producto_id = pr.id
             JOIN categorias cat ON pr.categoria_id = cat.id
-            GROUP BY pr.id, pr.nombre, cat.nombre  # <<-- AJUSTE CLAVE AQUÍ
+            GROUP BY pr.id, pr.nombre, cat.nombre 
             ORDER BY cantidad DESC
             LIMIT 1
         """)
         producto_mas_vendido = cursor.fetchone() or {"nombre": "N/A", "categoria": "N/A", "cantidad": 0}
 
-        # Método de pago más usado (No genera error)
         cursor.execute("""
             SELECT metodo_pago, COUNT(*) AS total
             FROM pedidos_enviados
@@ -437,8 +536,7 @@ def estadisticas_dia():
         }
 
     except Exception as e:
-        # Es útil devolver el error real para depuración, pero mantengo el formato original
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
