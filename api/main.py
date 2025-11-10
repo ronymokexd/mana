@@ -14,7 +14,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 # -------------------- CONFIGURACIÓN DE SEGURIDAD --------------------
 # ⚠️ CAMBIA ESTO POR UNA CLAVE SECRETA FUERTE ANTES DE PRODUCCIÓN
-SECRET_KEY = "tu-clave-super-secreta-y-segura" 
+SECRET_KEY = "Mokerony22!" 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 ADMIN_TOKEN_EXPIRE_MINUTES = 60 * 24
@@ -540,8 +540,3 @@ def estadisticas_dia():
     finally:
         cursor.close()
         conexion.close()
-
-
-# -------------------- EJECUCIÓN --------------------
-if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.0", port=8000)
