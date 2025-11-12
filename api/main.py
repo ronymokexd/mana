@@ -456,13 +456,17 @@ def reiniciar_pedidos():
 
 @app.get("/pedidos_enviados")
 def obtener_pedidos_enviados():
-    # Nota: Esta ruta debería protegerse con un rol de administrador
+    """
+    Devuelve todos los pedidos con información completa,
+    incluyendo el id_cliente para poder agruparlos desde el frontend.
+    """
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
         cursor.execute("""
             SELECT 
                 p.id AS id,
+                p.cliente_id AS id_cliente,
                 c.nombre AS cliente,
                 c.numero,
                 c.direccion,
@@ -488,6 +492,7 @@ def obtener_pedidos_enviados():
     finally:
         cursor.close()
         conexion.close()
+
 
 @app.get("/estadisticas_dia")
 def estadisticas_dia():
