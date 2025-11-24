@@ -296,34 +296,50 @@ class Pedido(BaseModel):
 @app.post("/pedidos")
 def crear_pedido(
     pedido: Pedido,
-    # 🛑 Obtiene el cliente_id de la validación del Token
     cliente_actual: Annotated[dict, Depends(get_current_cliente)] 
 ):
     conexion = conexion_bd()
     cursor = conexion.cursor()
-    cliente_id = cliente_actual['id'] # ID del cliente seguro y validado
+    cliente_id = cliente_actual['id'] 
 
     try:
-        # Insertar productos del pedido
+        # 1️⃣ Obtener último pedido para generar numero_pedido
+        cursor.execute("""
+            SELECT cliente_id, numero_pedido
+            FROM pedidos_enviados
+            ORDER BY id DESC
+            LIMIT 1
+        """)
+        ultimo = cursor.fetchone()
+
+        if ultimo:
+            if ultimo['cliente_id'] == cliente_id:
+                numero_generado = ultimo['numero_pedido']
+            else:
+                numero_generado = ultimo['numero_pedido'] + 1
+        else:
+            numero_generado = 1
+
+        # 2️⃣ Insertar cada item con su numero_pedido
         for item in pedido.items:
             cursor.execute("""
                 INSERT INTO pedidos_enviados 
-                (cliente_id, producto_id, nombre_producto, precio, cantidad, metodo_pago, necesita_cambio, descripcion)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (cliente_id, producto_id, nombre_producto, precio, cantidad, metodo_pago, necesita_cambio, descripcion, numero_pedido)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                cliente_id, # Usamos el ID seguro del token
+                cliente_id,
                 item.producto_id,
                 item.nombre_producto,
                 item.precio,
                 item.cantidad,
                 pedido.metodo_pago,
                 pedido.necesita_cambio,
-                pedido.descripcion
+                pedido.descripcion,
+                numero_generado
             ))
 
         conexion.commit()
-        # Se asume que la base de datos maneja la numeración
-        return {"mensaje": "Pedido creado exitosamente"}
+        return {"mensaje": "Pedido creado exitosamente", "numero_pedido": numero_generado}
 
     except Exception as e:
         conexion.rollback()
