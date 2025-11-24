@@ -296,14 +296,14 @@ class Pedido(BaseModel):
 @app.post("/pedidos")
 def crear_pedido(
     pedido: Pedido,
-    cliente_actual: Annotated[dict, Depends(get_current_cliente)] 
+    cliente_actual: Annotated[dict, Depends(get_current_cliente)]
 ):
     conexion = conexion_bd()
     cursor = conexion.cursor()
-    cliente_id = cliente_actual['id'] 
+    cliente_id = cliente_actual['id']
 
     try:
-        # 1️⃣ Obtener último pedido para generar numero_pedido
+        # 1️⃣ Obtener último pedido para generar número_pedido
         cursor.execute("""
             SELECT cliente_id, numero_pedido
             FROM pedidos_enviados
@@ -313,17 +313,20 @@ def crear_pedido(
         ultimo = cursor.fetchone()
 
         if ultimo:
+            # Si numero_pedido está en NULL → usar 1
+            ultimo_numero = ultimo['numero_pedido'] if ultimo['numero_pedido'] is not None else 1
+
             if ultimo['cliente_id'] == cliente_id:
-                numero_generado = ultimo['numero_pedido']
+                numero_generado = ultimo_numero
             else:
-                numero_generado = ultimo['numero_pedido'] + 1
+                numero_generado = ultimo_numero + 1
         else:
             numero_generado = 1
 
-        # 2️⃣ Insertar cada item con su numero_pedido
+        # 2️⃣ Insertar cada item con su número_pedido
         for item in pedido.items:
             cursor.execute("""
-                INSERT INTO pedidos_enviados 
+                INSERT INTO pedidos_enviados
                 (cliente_id, producto_id, nombre_producto, precio, cantidad, metodo_pago, necesita_cambio, descripcion, numero_pedido)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
@@ -339,15 +342,19 @@ def crear_pedido(
             ))
 
         conexion.commit()
-        return {"mensaje": "Pedido creado exitosamente", "numero_pedido": numero_generado}
+        return {"mensaje": "Pedido creado correctamente", "numero_pedido": numero_generado}
 
     except Exception as e:
         conexion.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
     finally:
         cursor.close()
         conexion.close()
+
 
 @app.get("/pedidos")
 def obtener_pedidos():
