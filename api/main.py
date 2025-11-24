@@ -459,6 +459,7 @@ def obtener_pedidos_enviados():
     """
     Devuelve todos los pedidos con información completa,
     incluyendo el id_cliente para poder agruparlos desde el frontend.
+    Ahora también incluye numero_pedido para tener un consecutivo real.
     """
     conexion = conexion_bd()
     cursor = conexion.cursor()
@@ -466,6 +467,7 @@ def obtener_pedidos_enviados():
         cursor.execute("""
             SELECT 
                 p.id AS id,
+                p.numero_pedido,          
                 p.cliente_id AS id_cliente,
                 c.nombre AS cliente,
                 c.numero,
@@ -485,13 +487,17 @@ def obtener_pedidos_enviados():
             JOIN categorias cat ON pr.categoria_id = cat.id
             ORDER BY p.fecha DESC
         """)
+        
         pedidos = cursor.fetchall()
         return pedidos
+
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
     finally:
         cursor.close()
         conexion.close()
+
 
 
 @app.get("/estadisticas_dia")
