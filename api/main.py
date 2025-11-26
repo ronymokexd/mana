@@ -593,7 +593,6 @@ def eliminar_pedido_por_numero(body: EliminarPedidoBody):
     cursor = conexion.cursor()
 
     try:
-        # DELETE con RETURNING devuelve tuplas
         cursor.execute("""
             DELETE FROM pedidos_enviados
             WHERE numero_pedido = %s
@@ -619,4 +618,5 @@ def eliminar_pedido_por_numero(body: EliminarPedidoBody):
     finally:
         cursor.close()
         conexion.close()
+
 
