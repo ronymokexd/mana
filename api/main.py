@@ -591,6 +591,7 @@ def eliminar_pedido_por_numero(body: EliminarPedidoBody):
 
     conexion = conexion_bd()
     cursor = conexion.cursor()
+
     try:
         # DELETE con RETURNING devuelve tuplas
         cursor.execute("""
@@ -608,13 +609,14 @@ def eliminar_pedido_por_numero(body: EliminarPedidoBody):
         return {
             "mensaje": f"Pedido {body.numero_pedido} eliminado correctamente",
             "eliminados": len(eliminados),
-            "ids_eliminados": [fila[0] for fila in eliminados]  # ← CORRECCIÓN AQUÍ
+            "ids_eliminados": [fila[0] for fila in eliminados]
         }
 
-except Exception as e:
-    conexion.rollback()
-    raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        conexion.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
     finally:
         cursor.close()
         conexion.close()
+
