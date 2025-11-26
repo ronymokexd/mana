@@ -6,6 +6,11 @@ import psycopg2.extras
 import uvicorn
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
+import os
+
+# PIN para operaciones sensibles (mejor: definir DELETE_PIN en env vars)
+DELETE_PIN = os.getenv("DELETE_PIN", "1234")
+
 
 # 🛑 IMPORTACIONES PARA SEGURIDAD JWT
 from jose import JWTError, jwt
@@ -571,6 +576,45 @@ def estadisticas_dia():
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    finally:
+        cursor.close()
+        conexion.close()
+class EliminarPedidoBody(BaseModel):
+    numero_pedido: int
+    pin: str
+
+@app.delete("/pedidos/eliminar_por_numero")
+def eliminar_pedido_por_numero(body: EliminarPedidoBody):
+    # Validar PIN
+    if body.pin != DELETE_PIN:
+        raise HTTPException(status_code=401, detail="PIN incorrecto")
+
+    conexion = conexion_bd()
+    cursor = conexion.cursor()
+    try:
+        # DELETE con RETURNING devuelve tuplas
+        cursor.execute("""
+            DELETE FROM pedidos_enviados
+            WHERE numero_pedido = %s
+            RETURNING id;
+        """, (body.numero_pedido,))
+
+        eliminados = cursor.fetchall()
+        conexion.commit()
+
+        if not eliminados:
+            return {"mensaje": "No se encontró ningún pedido con ese numero_pedido", "eliminados": 0}
+
+        return {
+            "mensaje": f"Pedido {body.numero_pedido} eliminado correctamente",
+            "eliminados": len(eliminados),
+            "ids_eliminados": [fila[0] for fila in eliminados]  # ← CORRECCIÓN AQUÍ
+        }
+
+except Exception as e:
+    conexion.rollback()
+    raise HTTPException(status_code=500, detail=str(e))
+
     finally:
         cursor.close()
         conexion.close()
