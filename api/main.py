@@ -636,7 +636,7 @@ def editar_pedido(numero_pedido: int, body: EditarPedidoBody):
     cursor = conexion.cursor()
 
     try:
-        # Actualizar datos generales del pedido (para todos los items de ese número)
+        # Actualizar datos generales
         cursor.execute("""
             UPDATE pedidos_enviados
             SET metodo_pago = %s,
@@ -650,23 +650,26 @@ def editar_pedido(numero_pedido: int, body: EditarPedidoBody):
             numero_pedido
         ))
 
-        # Actualizar cada producto dentro del pedido
+        # Actualizar productos del pedido
         for item in body.items:
             cursor.execute("""
                 UPDATE pedidos_enviados
                 SET cantidad = %s,
-                    precio = %s
+                    total = %s
                 WHERE numero_pedido = %s
-                  AND producto_id = %s
+                  AND producto = %s
             """, (
                 item.cantidad,
-                item.precio,
+                item.total,          # ← ESTE ES EL TOTAL NUEVO DEL PRODUCTO
                 numero_pedido,
-                item.producto_id
+                item.producto        # ← ESTE es el nombre del producto
             ))
 
         conexion.commit()
-        return {"mensaje": "Pedido actualizado correctamente", "numero_pedido": numero_pedido}
+        return {
+            "mensaje": "Pedido actualizado correctamente",
+            "numero_pedido": numero_pedido
+        }
 
     except Exception as e:
         conexion.rollback()
@@ -675,6 +678,3 @@ def editar_pedido(numero_pedido: int, body: EditarPedidoBody):
     finally:
         cursor.close()
         conexion.close()
-
-
-
