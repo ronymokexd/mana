@@ -259,15 +259,19 @@ def obtener_por_categoria(nombre_categoria: str):
             FROM productos p
             JOIN categorias c ON p.categoria_id = c.id
             WHERE LOWER(c.nombre) = LOWER(%s)
+              AND c.activa = TRUE
             ORDER BY p.id;
         """, (nombre_categoria,))
+        
         productos = cursor.fetchall()
         return productos if productos else {"mensaje": f"No hay productos en la categoría '{nombre_categoria}'"}
+
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         cursor.close()
         conexion.close()
+
 
 @app.get("/categorias")
 def obtener_categorias():
@@ -628,38 +632,22 @@ class EditarProductosBody(BaseModel):
     items: list[EditarProducto]
 
 
-@app.put("/pedidos_enviados/{numero_pedido}")
-def editar_productos_pedido(numero_pedido: int, body: EditarProductosBody):
+@app.put("/categorias/{id}/estado")
+def cambiar_estado_categoria(id: int, activa: bool):
     conexion = conexion_bd()
     cursor = conexion.cursor()
-
     try:
-        # Solo actualiza productos, nada más
-        for item in body.items:
-            cursor.execute("""
-                UPDATE pedidos_enviados
-                SET cantidad = %s,
-                    total = %s
-                WHERE numero_pedido = %s
-                  AND producto = %s
-            """, (
-                item.cantidad,
-                item.total,
-                numero_pedido,
-                item.producto
-            ))
-
+        cursor.execute(
+            "UPDATE categorias SET activa=%s WHERE id=%s",
+            (activa, id)
+        )
         conexion.commit()
         return {
-            "mensaje": "Productos del pedido actualizados correctamente",
-            "numero_pedido": numero_pedido
+            "mensaje": "Categoría activada" if activa else "Categoría desactivada"
         }
-
     except Exception as e:
         conexion.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
+        raise HTTPException(500, str(e))
     finally:
         cursor.close()
         conexion.close()
-
