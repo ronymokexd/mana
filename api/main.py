@@ -619,4 +619,62 @@ def eliminar_pedido_por_numero(body: EliminarPedidoBody):
         cursor.close()
         conexion.close()
 
+class EditarPedidoItem(BaseModel):
+    producto_id: int
+    cantidad: int
+    precio: int
+
+class EditarPedidoBody(BaseModel):
+    metodo_pago: str
+    necesita_cambio: str
+    descripcion: str
+    items: list[EditarPedidoItem]
+
+@app.put("/pedidos_enviados/{numero_pedido}")
+def editar_pedido(numero_pedido: int, body: EditarPedidoBody):
+    conexion = conexion_bd()
+    cursor = conexion.cursor()
+
+    try:
+        # Actualizar datos generales del pedido (para todos los items de ese número)
+        cursor.execute("""
+            UPDATE pedidos_enviados
+            SET metodo_pago = %s,
+                necesita_cambio = %s,
+                descripcion = %s
+            WHERE numero_pedido = %s
+        """, (
+            body.metodo_pago,
+            body.necesita_cambio,
+            body.descripcion,
+            numero_pedido
+        ))
+
+        # Actualizar cada producto dentro del pedido
+        for item in body.items:
+            cursor.execute("""
+                UPDATE pedidos_enviados
+                SET cantidad = %s,
+                    precio = %s
+                WHERE numero_pedido = %s
+                  AND producto_id = %s
+            """, (
+                item.cantidad,
+                item.precio,
+                numero_pedido,
+                item.producto_id
+            ))
+
+        conexion.commit()
+        return {"mensaje": "Pedido actualizado correctamente", "numero_pedido": numero_pedido}
+
+    except Exception as e:
+        conexion.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
 
