@@ -619,38 +619,22 @@ def eliminar_pedido_por_numero(body: EliminarPedidoBody):
         cursor.close()
         conexion.close()
 
-class EditarPedidoItem(BaseModel):
-    producto_id: int
+class EditarProducto(BaseModel):
+    producto: str
     cantidad: int
-    precio: int
+    total: int
 
-class EditarPedidoBody(BaseModel):
-    metodo_pago: str
-    necesita_cambio: str
-    descripcion: str
-    items: list[EditarPedidoItem]
+class EditarProductosBody(BaseModel):
+    items: list[EditarProducto]
+
 
 @app.put("/pedidos_enviados/{numero_pedido}")
-def editar_pedido(numero_pedido: int, body: EditarPedidoBody):
+def editar_productos_pedido(numero_pedido: int, body: EditarProductosBody):
     conexion = conexion_bd()
     cursor = conexion.cursor()
 
     try:
-        # Actualizar datos generales
-        cursor.execute("""
-            UPDATE pedidos_enviados
-            SET metodo_pago = %s,
-                necesita_cambio = %s,
-                descripcion = %s
-            WHERE numero_pedido = %s
-        """, (
-            body.metodo_pago,
-            body.necesita_cambio,
-            body.descripcion,
-            numero_pedido
-        ))
-
-        # Actualizar productos del pedido
+        # Solo actualiza productos, nada más
         for item in body.items:
             cursor.execute("""
                 UPDATE pedidos_enviados
@@ -660,14 +644,14 @@ def editar_pedido(numero_pedido: int, body: EditarPedidoBody):
                   AND producto = %s
             """, (
                 item.cantidad,
-                item.total,          # ← ESTE ES EL TOTAL NUEVO DEL PRODUCTO
+                item.total,
                 numero_pedido,
-                item.producto        # ← ESTE es el nombre del producto
+                item.producto
             ))
 
         conexion.commit()
         return {
-            "mensaje": "Pedido actualizado correctamente",
+            "mensaje": "Productos del pedido actualizados correctamente",
             "numero_pedido": numero_pedido
         }
 
@@ -678,3 +662,4 @@ def editar_pedido(numero_pedido: int, body: EditarPedidoBody):
     finally:
         cursor.close()
         conexion.close()
+
