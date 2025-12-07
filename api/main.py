@@ -407,7 +407,7 @@ def crear_pedido(
 
 
 @app.get("/pedidos")
-def obtener_pedidos(admin: Annotated[dict, Depends(verificar_admin)]):
+def obtener_pedidos():
     # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
@@ -510,7 +510,7 @@ def vaciar_carrito():
 
 @app.post("/reiniciar-pedidos")
 @app.delete("/reiniciar_pedidos") # Se mantiene el endpoint delete para compatibilidad
-def reiniciar_pedidos(admin: Annotated[dict, Depends(verificar_admin)]):
+def reiniciar_pedidos():
     # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
@@ -574,7 +574,7 @@ def obtener_pedidos_enviados(admin: Annotated[dict, Depends(verificar_admin)]):
 
 
 @app.get("/estadisticas_dia")
-def obtener_pedidos_enviados(admin: Annotated[dict, Depends(verificar_admin)]):
+def obtener_pedidos_enviados():
     # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
@@ -674,7 +674,7 @@ class EditarProductosBody(BaseModel):
 
 
 @app.put("/categorias/{id}/estado")
-def cambiar_estado_categoria(id: int, activa: bool, admin: Annotated[dict, Depends(verificar_admin)]):
+def cambiar_estado_categoria():
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
