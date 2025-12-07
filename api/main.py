@@ -528,7 +528,7 @@ def reiniciar_pedidos():
         conexion.close()
 
 @app.get("/pedidos_enviados")
-def obtener_pedidos_enviados(admin: Annotated[dict, Depends(verificar_admin)]):
+def obtener_pedidos_enviados():
     """
     Devuelve todos los pedidos con información completa,
     incluyendo el id_cliente para poder agruparlos desde el frontend.
@@ -629,7 +629,7 @@ class EliminarPedidoBody(BaseModel):
     pin: str
 
 @app.delete("/pedidos/eliminar_por_numero")
-def eliminar_pedido_por_numero(body: EliminarPedidoBody, admin: Annotated[dict, Depends(verificar_admin)]):
+def eliminar_pedido_por_numero(body: EliminarPedidoBody):
     # Validar PIN
     if body.pin != DELETE_PIN:
         raise HTTPException(status_code=401, detail="PIN incorrecto")
@@ -648,7 +648,10 @@ def eliminar_pedido_por_numero(body: EliminarPedidoBody, admin: Annotated[dict, 
         conexion.commit()
 
         if not eliminados:
-            return {"mensaje": "No se encontró ningún pedido con ese numero_pedido", "eliminados": 0}
+            return {
+                "mensaje": "No se encontró ningún pedido con ese numero_pedido",
+                "eliminados": 0
+            }
 
         return {
             "mensaje": f"Pedido {body.numero_pedido} eliminado correctamente",
