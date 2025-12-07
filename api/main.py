@@ -7,9 +7,9 @@ import uvicorn
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
 import os
-
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 # PIN para operaciones sensibles (mejor: definir DELETE_PIN en env vars)
-DELETE_PIN = os.getenv("DELETE_PIN", "1234")
+DELETE_PIN = os.getenv("DELETE_PIN", "0113")
 
 
 # 🛑 IMPORTACIONES PARA SEGURIDAD JWT
@@ -76,6 +76,47 @@ def get_current_cliente(token: Annotated[str, Depends(oauth2_scheme)]):
     finally:
         cursor.close()
         conexion.close()
+        
+
+
+# Protector HTTP Bearer (lee Authorization: Bearer <token>)
+security = HTTPBearer()
+
+def verificar_admin(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]):
+    """
+    Valida que el token Bearer sea válido y que el rol sea 'admin'.
+    Devuelve los datos del administrador (RealDict) si todo está OK.
+    """
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("rol") != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado - rol inválido")
+
+        admin_id = payload.get("sub")
+        if not admin_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido (sin sub)")
+
+        # Verificar que el admin exista en la BD (opcional pero recomendable)
+        conexion = conexion_bd()
+        cursor = conexion.cursor()
+        try:
+            cursor.execute("SELECT id, usuario, rol FROM administrador WHERE id = %s", (admin_id,))
+            admin = cursor.fetchone()
+            if not admin:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Administrador no encontrado")
+            return admin  # retorna datos del admin al endpoint protegido
+        finally:
+            cursor.close()
+            conexion.close()
+
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o expirado")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
 
 # -------------------- INICIALIZACIÓN DE FASTAPI --------------------
 app = FastAPI()
@@ -202,8 +243,8 @@ def obtener_clientes():
 # --- USUARIOS (ADMIN) ---
 
 @app.get("/usuarios")
-def obtener_usuarios():
-    # Nota: Esta ruta debería protegerse con un rol de administrador
+def obtener_usuarios(admin: Annotated[dict, Depends(verificar_admin)]):
+    # admin contiene id/usuario/rol del admin autenticado
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
@@ -366,7 +407,7 @@ def crear_pedido(
 
 
 @app.get("/pedidos")
-def obtener_pedidos():
+def obtener_pedidos(admin: Annotated[dict, Depends(verificar_admin)]):
     # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
@@ -469,7 +510,7 @@ def vaciar_carrito():
 
 @app.post("/reiniciar-pedidos")
 @app.delete("/reiniciar_pedidos") # Se mantiene el endpoint delete para compatibilidad
-def reiniciar_pedidos():
+def reiniciar_pedidos(admin: Annotated[dict, Depends(verificar_admin)]):
     # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
@@ -487,7 +528,7 @@ def reiniciar_pedidos():
         conexion.close()
 
 @app.get("/pedidos_enviados")
-def obtener_pedidos_enviados():
+def obtener_pedidos_enviados(admin: Annotated[dict, Depends(verificar_admin)]):
     """
     Devuelve todos los pedidos con información completa,
     incluyendo el id_cliente para poder agruparlos desde el frontend.
@@ -533,7 +574,7 @@ def obtener_pedidos_enviados():
 
 
 @app.get("/estadisticas_dia")
-def estadisticas_dia():
+def obtener_pedidos_enviados(admin: Annotated[dict, Depends(verificar_admin)]):
     # Nota: Esta ruta debería protegerse con un rol de administrador
     conexion = conexion_bd()
     cursor = conexion.cursor()
@@ -588,7 +629,7 @@ class EliminarPedidoBody(BaseModel):
     pin: str
 
 @app.delete("/pedidos/eliminar_por_numero")
-def eliminar_pedido_por_numero(body: EliminarPedidoBody):
+def eliminar_pedido_por_numero(body: EliminarPedidoBody, admin: Annotated[dict, Depends(verificar_admin)]):
     # Validar PIN
     if body.pin != DELETE_PIN:
         raise HTTPException(status_code=401, detail="PIN incorrecto")
@@ -633,7 +674,7 @@ class EditarProductosBody(BaseModel):
 
 
 @app.put("/categorias/{id}/estado")
-def cambiar_estado_categoria(id: int, activa: bool):
+def cambiar_estado_categoria(id: int, activa: bool, admin: Annotated[dict, Depends(verificar_admin)]):
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
