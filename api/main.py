@@ -243,8 +243,7 @@ def obtener_clientes():
 # --- USUARIOS (ADMIN) ---
 
 @app.get("/usuarios")
-def obtener_usuarios(admin: Annotated[dict, Depends(verificar_admin)]):
-    # admin contiene id/usuario/rol del admin autenticado
+def obtener_usuarios():
     conexion = conexion_bd()
     cursor = conexion.cursor()
     try:
@@ -256,6 +255,7 @@ def obtener_usuarios(admin: Annotated[dict, Depends(verificar_admin)]):
     finally:
         cursor.close()
         conexion.close()
+
 
 # ---------------------------------------------------------------------------------------------------
 # -------------------- ENDPOINTS DE PEDIDOS Y MENÚ --------------------
